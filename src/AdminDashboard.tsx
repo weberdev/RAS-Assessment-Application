@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import RasHeader from './RasHeader'
+import { API_BASE_URL } from './api'
 
 type Photo = {
   id: number
@@ -20,7 +21,7 @@ type Submission = {
   photos: Photo[]
 }
 
-function AuthenticatedPhoto({
+export function AuthenticatedPhoto({
   photoId,
   token,
 }: {
@@ -35,7 +36,7 @@ function AuthenticatedPhoto({
 
     async function loadPhoto() {
       const response = await fetch(
-        `http://localhost:5118/api/photos/${photoId}`,
+        `${API_BASE_URL}/api/photos/${photoId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -86,7 +87,7 @@ const [endDate, setEndDate] = useState('')
     async function loadSubmissions() {
       try {
         const response = await fetch(
-          'http://localhost:5118/api/submissions',
+          `${API_BASE_URL}/api/submissions`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -130,6 +131,12 @@ const [endDate, setEndDate] = useState('')
     matchesEndDate
   )
 })
+const siteSummary = Object.entries(
+  submissions.reduce<Record<string, number>>((counts, submission) => {
+    counts[submission.site] = (counts[submission.site] ?? 0) + 1
+    return counts
+  }, {})
+)
   if (loading) return <p>Loading submissions...</p>
   if (error) return <p role="alert">{error}</p>
 
@@ -184,16 +191,32 @@ const [endDate, setEndDate] = useState('')
     />
   </label>
 </section>
+<section aria-labelledby="site-summary">
+  <h2 id="site-summary">Submissions by Site</h2>
 
+  {siteSummary.length === 0 ? (
+    <p>No submissions available.</p>
+  ) : (
+    <ul>
+      {siteSummary.map(([site, count]) => (
+        <li key={site}>
+          <strong>{site}</strong>: {count} submission(s)
+        </li>
+      ))}
+    </ul>
+  )}
+</section>
       {filteredSubmissions.length === 0 ? (
         <p>No submissions yet.</p>
       ) : (
+        
         <table>
           <thead>
             <tr>
               <th>Worker</th>
               <th>Site</th>
               <th>Date</th>
+              <th>Status</th>
               <th>Details</th>
             </tr>
           </thead>
@@ -203,6 +226,15 @@ const [endDate, setEndDate] = useState('')
                 <td>{submission.workerName}</td>
                 <td>{submission.site}</td>
                 <td>{submission.date}</td>
+                <td>
+  {submission.ppeWorn &&
+  submission.fallProtection &&
+  submission.laddersScaffolding &&
+  submission.toolsAndCords &&
+  submission.hazardsIdentified
+    ? 'Pass'
+    : 'Needs Attention'}
+</td>
                 <td>
                   <details>
                     <summary>View report</summary>

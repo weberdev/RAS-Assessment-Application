@@ -1,8 +1,10 @@
 import './App.css'
+import { API_BASE_URL } from './api'
 import AdminDashboard from './AdminDashboard'
 import RasHeader from './RasHeader'
+import { AuthenticatedPhoto} from './AdminDashboard'
 //We grab useState from react to access state, allowing tracking of values.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 //We clump the set of five boolean safety values into a list.
 //The list can be modified in future.
 const checklistItems = [
@@ -49,6 +51,48 @@ const [password, setPassword] = useState('')
 const [token, setToken] = useState<string | null>(null)
 const [role, setRole] = useState('')
 const [loginError, setLoginError] = useState('')
+type Submission = {
+  id: number
+  site: string
+  date: string
+  workerName: string
+  ppeWorn: boolean
+  fallProtection: boolean
+  laddersScaffolding: boolean
+  toolsAndCords: boolean
+  hazardsIdentified: boolean
+  notes: string
+  photos: { id: number; url: string }[]
+}
+
+const [history, setHistory] = useState<Submission[]>([])
+const [historyError, setHistoryError] = useState('')
+
+useEffect(() => {
+  if (!token || role !== 'Framer') return
+
+  async function loadHistory() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/submissions`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Could not load previous submissions.')
+      }
+
+      const data: Submission[] = await response.json()
+      setHistory(data)
+      setHistoryError('')
+    } catch {
+      setHistoryError('Could not load previous submissions.')
+    }
+  }
+
+  void loadHistory()
+}, [token, role, submitMessage])
 
 async function handleLogin(
   event: React.SubmitEvent<HTMLFormElement>
@@ -58,7 +102,7 @@ async function handleLogin(
   setLoginError('')
 
   try {
-    const response = await fetch('http://localhost:5118/api/login', {
+    const response = await fetch(`${API_BASE_URL}/api/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,7 +135,7 @@ async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     photos,
   }
 try{
-  const response = await fetch('http://localhost:5118/api/submissions', {
+  const response = await fetch(`${API_BASE_URL}/api/submissions`, {
   method: 'POST',
 headers: {
   'Content-Type': 'application/json',
@@ -115,7 +159,7 @@ for (const photo of photos) {
   formData.append('file', photo);
 
 const photoResponse = await fetch(
-  `http://localhost:5118/api/submissions/${data.id}/photos`,
+  `${API_BASE_URL}/api/submissions/${data.id}/photos`,
   {
     method: 'POST',
     headers: {
@@ -267,6 +311,50 @@ if (role === 'Admin') {
 {submitMessage && (
   <p role="status">{submitMessage}</p>
 )}
+
+<section aria-labelledby="submission-history">
+  <h2 id="submission-history">My Previous Submissions</h2>
+
+  {historyError && <p role="alert">{historyError}</p>}
+
+  {history.length === 0 && !historyError ? (
+    <p>No previous submissions found.</p>
+  ) : (
+    <ul>
+      {history.map((submission) => (
+        <li key={submission.id}>
+          <strong>{submission.site}</strong>
+          {' — '}
+          {submission.date}
+          {' — '}
+          Submission #{submission.id}
+          {' — '}
+          {submission.photos.length} photo(s)
+          <details>
+  <summary>View report</summary>
+
+  <p>Worker: {submission.workerName}</p>
+  <p>PPE worn: {submission.ppeWorn ? 'Yes' : 'No'}</p>
+  <p>Fall protection: {submission.fallProtection ? 'Yes' : 'No'}</p>
+  <p>Ladders/scaffolding: {submission.laddersScaffolding ? 'Yes' : 'No'}</p>
+  <p>Tools and cords: {submission.toolsAndCords ? 'Yes' : 'No'}</p>
+  <p>Hazards identified: {submission.hazardsIdentified ? 'Yes' : 'No'}</p>
+  <p>Notes: {submission.notes || 'None'}</p>
+  <h3>Attached Photos</h3>
+
+{submission.photos.map((photo) => (
+  <AuthenticatedPhoto
+    key={photo.id}
+    photoId={photo.id}
+    token={token}
+  />
+))}
+</details>
+        </li>
+      ))}
+    </ul>
+  )}
+</section>
 
     </main>
     </>

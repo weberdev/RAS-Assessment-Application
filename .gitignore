@@ -42,3 +42,8 @@ server/uploads/
 .env.*
 !.env.example
 **/secrets.json
+# Locally generated production frontend
+server/wwwroot/
+
+# Local ASP.NET configuration overrides
+server/appsettings.Development.json

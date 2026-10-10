@@ -10,8 +10,14 @@ using System.Security.Claims;
 
 
 var builder = WebApplication.CreateBuilder(args);
+var dataDirectory = builder.Configuration["DataDirectory"]
+    ?? builder.Environment.ContentRootPath;
+
+Directory.CreateDirectory(dataDirectory);
+
 builder.Services.AddDbContext<SafetyDbContext>(options =>
-    options.UseSqlite("Data Source=safety.db"));
+    options.UseSqlite(
+        $"Data Source={Path.Combine(dataDirectory, "safety.db")}"));
 
 builder.Services.AddOpenApi();
 
@@ -50,6 +56,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IPasswordHasher<SafetyUser>, PasswordHasher<SafetyUser>>();
 
 var app = builder.Build();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -203,8 +211,8 @@ if (submission.SafetyUserId != userId &&
     if (!allowedTypes.Contains(file.ContentType))
         return Results.BadRequest("Only JPEG, PNG, and WebP images are allowed.");
 
-    var uploadsDirectory = Path.Combine(
-        environment.ContentRootPath, "uploads");
+  var uploadsDirectory = Path.Combine(
+    dataDirectory, "uploads");
 
     Directory.CreateDirectory(uploadsDirectory);
 
@@ -256,11 +264,11 @@ if (submission.SafetyUserId != userId &&
     return Results.Forbid();
 }
 
-    var filePath = Path.Combine(
-        environment.ContentRootPath,
-        "uploads",
-        photo.FileName
-    );
+var filePath = Path.Combine(
+    dataDirectory,
+    "uploads",
+    photo.FileName
+);
 
     if (!File.Exists(filePath))
         return Results.NotFound();
